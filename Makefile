@@ -9,7 +9,7 @@ CFLAGS += -g -Wall -fPIC -DLOGGER=$(LOGGER)
 LDLIBS += -lm -lreadline
 LDFLAGS +=
 
-src=history.c shell.c ui.c
+src=history.c shell.c ui.c util.c
 obj=$(src:.c=.o)
 
 all: $(bin) libshell.so
@@ -23,6 +23,7 @@ libshell.so: $(obj)
 shell.o: shell.c history.h logger.h ui.h
 history.o: history.c history.h logger.h
 ui.o: ui.h ui.c logger.h history.h
+util.o: util.c util.h logger.h
 
 clean:
 	rm -f $(bin) $(obj) libshell.so vgcore.*
