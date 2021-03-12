@@ -34,7 +34,14 @@ void pipeline_r(struct command_line *cmds, int i)
 
             if(cmds[i].stdout_file !=NULL){
 
-                int fd = open(cmds[i].stdout_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                int flags;
+                if(cmds[i].append == -1){
+                    flags = O_WRONLY | O_CREAT | O_TRUNC;
+                } else {
+                    flags = O_WRONLY | O_APPEND;
+                    LOGP("APPENDING\n");
+                }
+                int fd = open(cmds[i].stdout_file, flags, 0666);
                 if(fd == -1){
 
                     perror("open");
@@ -55,6 +62,11 @@ void pipeline_r(struct command_line *cmds, int i)
 
             execvp(cmds[i].tokens[0], cmds[i].tokens);
             perror(cmds[i].tokens[0]);
+
+            perror("execvp");
+            close(fileno(stdin));
+            close(fileno(stdout));
+            close(fileno(stderr));
             exit(EXIT_FAILURE);
 
     } else {
@@ -175,7 +187,129 @@ int handle_search(char *command){
     }
     return -1;
 }
+void init_commands(struct command_line *cmds, int pipe){
 
+    for(int i = 0; i < (pipe + 1); i++){
+        cmds[i].stdout_file = NULL;
+        cmds[i].stdin_file = NULL;
+        cmds[i].append = -1;
+        cmds[i].total_tokens = 0;
+    }
+
+
+}
+void destroy_commands(struct command_line *cmds, int pipe){
+
+    for(int i = 0; i < pipe + 1; i++){
+        for(int j = 0; j < cmds[i].total_tokens; j++){
+            free(cmds[i].tokens[j]);
+        }
+        if(cmds[i].stdout_file != NULL){
+            free(cmds[i].stdout_file);
+        }
+
+        if(cmds[i].stdin_file != NULL){
+            free(cmds[i].stdin_file);
+        }
+        free(cmds[i].tokens);
+    }
+
+}
+int handle_utils(char *const args[], int pipe, int tokens){
+
+    int status = -1;
+    struct command_line cmds[pipe + 1];
+    struct command_line *p;
+    p = cmds;
+    init_commands(cmds, pipe);
+
+    size_t command_sz = 8;
+    char ***commands = NULL;
+
+    commands = malloc((pipe + 1) * sizeof(char**));
+    if(!commands){
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    for(int i = 0; i < pipe + 1; i++){
+        commands[i] = malloc(command_sz * sizeof(char*));
+        if(!(commands[i])){
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    //pointer to list of string array
+    char ***command_array = commands;
+    //pointer to elements of string array
+    char **p_command = *commands;
+
+
+    //p->total_tokens = 8;
+    for(int i = 0; i < tokens; i++){
+
+        if(p->total_tokens == command_sz){
+            command_sz *=2;
+            *command_array = realloc(*command_array, sizeof(char*) * command_sz);
+            if(!(*command_array)){
+                perror("realloc");
+                exit(EXIT_FAILURE);
+            }
+        }
+        if(*args[i] == '<'){
+            p->stdin_file = strdup(args[++i]);
+            continue;
+        }
+        if(!strcmp(args[i], ">>")){
+
+            p->append = 0;
+            p->stdout_file = strdup(args[++i]);
+            continue;
+        }
+        if(*args[i] == '>'){
+            p->stdout_file = strdup(args[++i]);
+            continue;
+        }
+        if(*args[i] == '|'){
+
+            *p_command = (char*) NULL;
+
+            p->tokens = *command_array++;  //Adding the array of strings to struct
+            p->stdout_pipe = true;
+            p++;                         //advancing one position with struct
+            p_command = *command_array;
+            command_sz = 8;
+        } else {
+
+            *p_command = strdup(args[i]);
+            p_command++;                //advancing one element in array
+            p->total_tokens += 1;
+        }
+    }
+    *p_command = (char*) NULL;
+    p->tokens = *command_array;
+    p->stdout_pipe = false;
+
+
+    pid_t child = fork();
+    if( child == 0 ){
+
+        execute_pipeline(cmds);
+    } else if( child == -1){
+
+        perror("fork");
+    } else {
+
+        waitpid(child, &status, 0);
+        fflush(stdout);
+    }
+    destroy_commands(cmds, pipe);
+    free(commands);
+
+
+    return status;
+}
 int main(void)
 {
     init_ui();
@@ -188,10 +322,13 @@ int main(void)
         }
         char *args[4096];
         LOG("Input command: %s\n", command);
+        char *p_comment = strstr(command, "#");
+        if(p_comment){
+            *p_comment = '\0';
+        }
         if(*command == '!'){
             int search;
            if((search = handle_search(command)) == -1){
-               LOGP("RETURNED -1\n");
                cleanup();
                continue;
            }
@@ -199,6 +336,7 @@ int main(void)
         LOG("New command: %s\n", command);
         hist_add(command);
 
+        int status;
         int pipe = 0;
         int tokens = 0;
         char *next_tok = command;
@@ -210,144 +348,21 @@ int main(void)
             args[tokens++] = curr_tok;
         }
         args[tokens] = (char *) 0;
-
-        int builtin_chexec;
-
-        if((builtin_chexec = handle_builtins(command, args)) == 0){
-            set_prompt_stat(builtin_chexec, hist_last_cnum());
-            fflush(stdout);
-            cleanup();
-            continue;
+        for(int i = 0; i < tokens; i++){
+            LOG("Token: %d %s\n", i, args[i]);
         }
 
-        if(pipe > 0){
-            struct command_line cmds[pipe + 1];
-            struct command_line *p;
-            p = cmds;
-            for(int i = 0; i < (pipe + 1); i++){
-                cmds[i].stdout_file = NULL;
-                cmds[i].stdin_file = NULL;
-                cmds[i].append = -1;
-            }
 
-            size_t command_sz = 8;
-            int pipe_args = 0;
-            char ***commands = NULL;
-            commands = malloc((pipe + 1) * sizeof(char**));
-            if(!commands){
-                perror("malloc");
-                exit(EXIT_FAILURE);
-            }
-
-            for(int i = 0; i < pipe + 1; i++){
-                commands[i] = malloc(8 * sizeof(char*));
-                if(!(commands[i])){
-                    perror("malloc");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            char ***arg = commands;
-            char **p_command = *commands;
-            for(int i = 0; i < tokens; i++){
-
-                if(pipe_args == command_sz){
-                    command_sz *=2;
-                    arg = realloc(arg, sizeof(char*) * command_sz);
-                    if(!arg){
-                        perror("realloc");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                if(*args[i] == '<'){
-                    p->stdin_file = strdup(args[++i]);
-                    continue;
-                }
-                if(*args[i] == '>'){
-                    p->stdout_file = strdup(args[++i]);
-                    continue;
-                }
-                if(*args[i] == '|'){
-
-                    *p_command = (char*) NULL;
-                    //char **it = arg;
-                    //while(*it != NULL){
-                    //    LOG("commands: %s\n", *it++);
-                    //}
-                    p->tokens = *arg++;
-                    p->stdout_pipe = true;
-                    p->stdout_file = NULL;
-                    p->total_tokens = pipe_args;
-                    p++;
-                    p_command = *arg;
-                    pipe_args = 0;
-                    command_sz = 8;
-                } else {
-
-                    *p_command = strdup(args[i]);
-                    p_command++;
-                    pipe_args++;
-                }
-            }
-            *p_command = (char*) NULL;
-            p->tokens = *arg;
-            p->stdout_file = NULL;
-            p->stdout_pipe = false;
-            p->total_tokens = pipe_args;
-            //char **c = commands[1];
-            //while(*c != NULL){
-            //    LOG("C: %s\n", *c++);
-            //}
-
-            pid_t child = fork();
-            if( child == 0 ){
-
-                execute_pipeline(cmds);
-            } else if( child == -1){
-
-                perror("fork");
-            } else {
-
-                wait(&child);
-            }
-            for(int i = 0; i < pipe + 1; i++){
-                for(int j = 0; j < cmds[i].total_tokens; j++){
-                    free(cmds[i].tokens[j]);
-                }
-                if(cmds[i].stdout_file != NULL){
-                    free(cmds[i].stdout_file);
-                }
-
-                if(cmds[i].stdin_file != NULL){
-                    free(cmds[i].stdin_file);
-                }
-                free(cmds[i].tokens);
-            }
-            free(commands);
-            cleanup();
-            continue;
-        }
-
-        pid_t child = fork();
-        if(child == 0){
-
-            execvp(args[0], args);
-            perror("execvp");
-            close(fileno(stdin));
-            close(fileno(stdout));
-            close(fileno(stderr));
-            return EXIT_FAILURE;
-        } else if(child == -1){
-
-            perror("fork");
-            cleanup();
-            continue;
-        } else {
-
-            int status;
-            waitpid(child, &status, 0);
+        if((status = handle_builtins(command, args)) == 0){
             set_prompt_stat(status, hist_last_cnum());
             fflush(stdout);
-        } 
+            cleanup();
+            continue;
+        }
+
+        status = handle_utils(args, pipe, tokens);
+        set_prompt_stat(status, hist_last_cnum());
+
         cleanup();
     }
 
