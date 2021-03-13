@@ -41,8 +41,7 @@ void init_ui(void)
     }
 
     sprintf(full_usr_hst, "[%s@%s", username, hostname);
-    struct passwd *pwuid = getpwuid(getuid());
-    pw_dir = pwuid->pw_dir;
+    pw_dir = getpwd();
     set_prompt_cwd();
     set_prompt_stat(0,1);
     rl_startup_hook = readline_init;
@@ -164,4 +163,5 @@ char *command_generator(const char *text, int state)
     // over from the beginning.
 
     return NULL;
+    
 }

@@ -32,28 +32,28 @@ static int proc_status;
 static pid_t child;
 static int job = -1;
 
-void pipeline_r(struct command_line *cmds, int i)
+void pipeline_r(struct command_line *cmds)
 {
    
-    if(cmds[i].stdout_pipe == false){
+    if(cmds->stdout_pipe == false){
 
-            if(cmds[i].stdout_file !=NULL){
+            if(cmds->stdout_file !=NULL){
 
                 int flags;
-                if(cmds[i].append == -1){
+                if(cmds->append == -1){
                     flags = O_WRONLY | O_CREAT | O_TRUNC;
                 } else {
                     flags = O_WRONLY | O_APPEND;
                 }
-                int fd = open(cmds[i].stdout_file, flags, 0666);
+                int fd = open(cmds->stdout_file, flags, 0666);
                 if(fd == -1){
 
                     perror("open");
                     exit(EXIT_FAILURE);
                 }
 
-                if(cmds[i].stdin_file != NULL){
-                    int file = open(cmds[i].stdin_file, O_RDONLY);
+                if(cmds->stdin_file != NULL){
+                    int file = open(cmds->stdin_file, O_RDONLY);
                     dup2(file, STDIN_FILENO);
                 }
 
@@ -64,8 +64,8 @@ void pipeline_r(struct command_line *cmds, int i)
                 }
             }
 
-            execvp(cmds[i].tokens[0], cmds[i].tokens);
-            perror(cmds[i].tokens[0]);
+            execvp(cmds->tokens[0], cmds->tokens);
+            perror(cmds->tokens[0]);
 
             perror("execvp");
             close(fileno(stdin));
@@ -85,8 +85,8 @@ void pipeline_r(struct command_line *cmds, int i)
         child = fork(); 
         if(child == 0){
 
-            if(cmds[i].stdin_file != NULL){
-                int file = open(cmds[i].stdin_file, O_RDONLY);
+            if(cmds->stdin_file != NULL){
+                int file = open(cmds->stdin_file, O_RDONLY);
                 dup2(file, STDIN_FILENO);
             }
 
@@ -97,8 +97,8 @@ void pipeline_r(struct command_line *cmds, int i)
             }
 
             close(fd[0]);
-            execvp(cmds[i].tokens[0], cmds[i].tokens);
-            perror(cmds[i].tokens[0]);
+            execvp(cmds->tokens[0], cmds->tokens);
+            perror(cmds->tokens[0]);
             exit(EXIT_FAILURE);
         } else if (child == -1){
 
@@ -113,16 +113,16 @@ void pipeline_r(struct command_line *cmds, int i)
             }
 
             close(fd[1]);
-            pipeline_r(cmds, ++i);
+            pipeline_r(cmds + 1);
         }
     }
 
 }
 
-void execute_pipeline(struct command_line *cmds)
-{
-    pipeline_r(cmds, 0);
-}
+
+
+
+
 int handle_builtins(char *command, char **args){
 
     if(!strcmp(command, "jobs")){
@@ -133,13 +133,13 @@ int handle_builtins(char *command, char **args){
     if(!strcmp(command, "cd")){
         char path[256];
         if(args[1] == NULL){
-            strcpy(path, getenv("HOME"));
+            strcpy(path, getpwd());
         } else if(!strncmp(args[1], "~", 1)){
             if(strlen(args[1]) == 1){
-                strcpy(path, getenv("HOME"));
+                strcpy(path, getpwd());
             } else {
                 char *p = args[1];
-                sprintf(path, "%s%s", getenv("HOME"), ++p);
+                sprintf(path, "%s%s", getpwd(), ++p);
             }
         } else {
             strcpy(path, args[1]);
@@ -253,7 +253,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
     char **p_command = *commands;
 
 
-    int tip = -1;
+    job = -1;
 
     for(int i = 0; i < tokens; i++){
 
@@ -268,7 +268,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
             }
         }
         if(*args[i] == '&'){
-            tip = 0;
+            job = 0;
             continue;
         }
         if(*args[i] == '<'){
@@ -302,7 +302,6 @@ int handle_utils(char *const args[], int pipe, int tokens){
             p->total_tokens += 1;
         }
     }
-    job = tip;
     *p_command = (char*) NULL;
     p->tokens = *command_array;
     p->stdout_pipe = false;
@@ -311,9 +310,8 @@ int handle_utils(char *const args[], int pipe, int tokens){
     child = fork();
     if( child == 0 ){
 
+        pipeline_r(cmds);
 
-
-        execute_pipeline(cmds);
     } else if( child == -1){
 
         perror("fork");
@@ -338,9 +336,9 @@ void sigchild_handler(){
     pid_t pid;
     if((pid = waitpid(-1, &proc_status, WNOHANG)) > 0){
 
-    jobs_delete(pid);
+        jobs_delete(pid);
+        fflush(stdout);
     }
-    //fflush(stdout);
 
 }
 int main(void)

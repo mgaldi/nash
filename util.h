@@ -6,5 +6,6 @@
 #define _UTIL_H_
 
 char *next_token(char **str_ptr, const char *delim);
+char *getpwd();
 int isDigitOnly(char *hist_search);
 #endif

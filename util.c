@@ -8,6 +8,9 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <unistd.h>
 
 #include "util.h"
 
@@ -49,6 +52,12 @@ char *next_token(char **str_ptr, const char *delim)
     return current_ptr;
 }
 
+char *getpwd(){
+    
+    struct passwd *pwuid = getpwuid(getuid());
+    return pwuid->pw_dir;
+
+}
 int isDigitOnly(char *hist_search){
     char *c = hist_search;
 
