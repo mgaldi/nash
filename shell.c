@@ -229,32 +229,35 @@ int handle_utils(char *const args[], int pipe, int tokens){
     commands = malloc((pipe + 1) * sizeof(char**));
     if(!commands){
         perror("malloc");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
+    //size_t news = sizeof(char*) * command_sz;
     for(int i = 0; i < pipe + 1; i++){
         commands[i] = malloc(command_sz * sizeof(char*));
         if(!(commands[i])){
             perror("malloc");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
     }
 
-    //pointer to list of string array
+    //pointer to list of array of strings 
     char ***command_array = commands;
-    //pointer to elements of string array
     char **p_command = *commands;
 
 
-    //p->total_tokens = 8;
+    char ***p_test = command_array;
+
     for(int i = 0; i < tokens; i++){
 
         if(p->total_tokens == command_sz){
             command_sz *=2;
-            *command_array = realloc(*command_array, sizeof(char*) * command_sz);
+            size_t news = sizeof(char*) * command_sz;
+            *command_array = realloc(*command_array, news);
+            p_command = (*command_array + i);
             if(!(*command_array)){
                 perror("realloc");
-                exit(EXIT_FAILURE);
+                return EXIT_FAILURE;
             }
         }
         if(*args[i] == '<'){
@@ -275,7 +278,8 @@ int handle_utils(char *const args[], int pipe, int tokens){
 
             *p_command = (char*) NULL;
 
-            p->tokens = *command_array++;  //Adding the array of strings to struct
+            p->tokens = *command_array;  //Adding the array of strings to struct
+            command_array++;
             p->stdout_pipe = true;
             p++;                         //advancing one position with struct
             p_command = *command_array;
