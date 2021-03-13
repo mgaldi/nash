@@ -246,7 +246,6 @@ int handle_utils(char *const args[], int pipe, int tokens){
     char **p_command = *commands;
 
 
-    char ***p_test = command_array;
 
     for(int i = 0; i < tokens; i++){
 
@@ -254,7 +253,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
             command_sz *=2;
             size_t news = sizeof(char*) * command_sz;
             *command_array = realloc(*command_array, news);
-            p_command = (*command_array + i);
+            p_command = (*command_array + p->total_tokens);
             if(!(*command_array)){
                 perror("realloc");
                 return EXIT_FAILURE;
