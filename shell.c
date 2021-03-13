@@ -8,7 +8,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 
+#include "jobs.h"
 #include "history.h"
 #include "util.h"
 #include "logger.h"
@@ -26,6 +28,9 @@ struct command_line {
 
 
 static char *command = NULL;
+static int proc_status;
+static pid_t child;
+static int job = -1;
 
 void pipeline_r(struct command_line *cmds, int i)
 {
@@ -39,7 +44,6 @@ void pipeline_r(struct command_line *cmds, int i)
                     flags = O_WRONLY | O_CREAT | O_TRUNC;
                 } else {
                     flags = O_WRONLY | O_APPEND;
-                    LOGP("APPENDING\n");
                 }
                 int fd = open(cmds[i].stdout_file, flags, 0666);
                 if(fd == -1){
@@ -78,7 +82,7 @@ void pipeline_r(struct command_line *cmds, int i)
             perror("pipe");
             exit(EXIT_FAILURE);
         }
-        pid_t child = fork(); 
+        child = fork(); 
         if(child == 0){
 
             if(cmds[i].stdin_file != NULL){
@@ -121,6 +125,11 @@ void execute_pipeline(struct command_line *cmds)
 }
 int handle_builtins(char *command, char **args){
 
+    if(!strcmp(command, "jobs")){
+        jobs_print();
+        fflush(stdout);
+        return 0;
+    }
     if(!strcmp(command, "cd")){
         char path[256];
         if(args[1] == NULL){
@@ -217,7 +226,6 @@ void destroy_commands(struct command_line *cmds, int pipe){
 }
 int handle_utils(char *const args[], int pipe, int tokens){
 
-    int status = -1;
     struct command_line cmds[pipe + 1];
     struct command_line *p;
     p = cmds;
@@ -232,7 +240,6 @@ int handle_utils(char *const args[], int pipe, int tokens){
         return EXIT_FAILURE;
     }
 
-    //size_t news = sizeof(char*) * command_sz;
     for(int i = 0; i < pipe + 1; i++){
         commands[i] = malloc(command_sz * sizeof(char*));
         if(!(commands[i])){
@@ -246,6 +253,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
     char **p_command = *commands;
 
 
+    int tip = -1;
 
     for(int i = 0; i < tokens; i++){
 
@@ -258,6 +266,10 @@ int handle_utils(char *const args[], int pipe, int tokens){
                 perror("realloc");
                 return EXIT_FAILURE;
             }
+        }
+        if(*args[i] == '&'){
+            tip = 0;
+            continue;
         }
         if(*args[i] == '<'){
             p->stdin_file = strdup(args[++i]);
@@ -290,13 +302,16 @@ int handle_utils(char *const args[], int pipe, int tokens){
             p->total_tokens += 1;
         }
     }
+    job = tip;
     *p_command = (char*) NULL;
     p->tokens = *command_array;
     p->stdout_pipe = false;
 
 
-    pid_t child = fork();
+    child = fork();
     if( child == 0 ){
+
+
 
         execute_pipeline(cmds);
     } else if( child == -1){
@@ -304,19 +319,37 @@ int handle_utils(char *const args[], int pipe, int tokens){
         perror("fork");
     } else {
 
-        waitpid(child, &status, 0);
-        fflush(stdout);
+
+        if(job == 0)
+            jobs_add(command, child);
+        if(job == -1){
+            waitpid(child, &proc_status, 0);
+            fflush(stdout);
+        }
     }
     destroy_commands(cmds, pipe);
     free(commands);
 
 
-    return status;
+    return proc_status;
+}
+void sigchild_handler(){
+
+    pid_t pid;
+    if((pid = waitpid(-1, &proc_status, WNOHANG)) > 0){
+
+    jobs_delete(pid);
+    }
+    //fflush(stdout);
+
 }
 int main(void)
 {
+    signal(SIGINT, SIG_IGN);
+    signal(SIGCHLD, sigchild_handler); 
     init_ui();
     hist_init(100);
+    jobs_init(10);
 
     while (true) {
         command = read_command();
@@ -324,7 +357,7 @@ int main(void)
             break;
         }
         char *args[4096];
-        LOG("Input command: %s\n", command);
+        //LOG("Input command: %s\n", command);
         char *p_comment = strstr(command, "#");
         if(p_comment){
             *p_comment = '\0';
@@ -336,13 +369,14 @@ int main(void)
                continue;
            }
         }
-        LOG("New command: %s\n", command);
+        //LOG("New command: %s\n", command);
         hist_add(command);
 
+        char *command_copy = strdup(command);
         int status;
         int pipe = 0;
         int tokens = 0;
-        char *next_tok = command;
+        char *next_tok = command_copy;
         char *curr_tok;
         while((curr_tok = next_token(&next_tok, " \n\t\r")) != NULL){
             if(*curr_tok == '|')
@@ -351,13 +385,11 @@ int main(void)
             args[tokens++] = curr_tok;
         }
         args[tokens] = (char *) 0;
-        for(int i = 0; i < tokens; i++){
-            LOG("Token: %d %s\n", i, args[i]);
-        }
 
 
-        if((status = handle_builtins(command, args)) == 0){
+        if((status = handle_builtins(command_copy, args)) == 0){
             set_prompt_stat(status, hist_last_cnum());
+            free(command_copy);
             fflush(stdout);
             cleanup();
             continue;
@@ -366,9 +398,11 @@ int main(void)
         status = handle_utils(args, pipe, tokens);
         set_prompt_stat(status, hist_last_cnum());
 
+        free(command_copy);
         cleanup();
     }
 
+    jobs_destroy();
     hist_destroy();
     destroy_ui();
     free(command);

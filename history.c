@@ -107,7 +107,6 @@ const char *hist_search_cnum(int command_number)
 {
     // TODO: Retrieves a particular command number. Return NULL if no match
     // found.
-    LOGP("CHECKING NUM\n");
     int lower = c_history->total - c_history->limit;
     if(lower < 0)
         lower = 0;

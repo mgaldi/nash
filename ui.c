@@ -11,7 +11,7 @@
 #include "ui.h"
 
 static int readline_init(void);
-static char prompt_str[4097] = { 0 };
+static char prompt_str[4096] = { 0 };
 static char *username = NULL;
 static char hostname[256];
 static char full_usr_hst[288];
@@ -41,7 +41,6 @@ void init_ui(void)
     }
 
     sprintf(full_usr_hst, "[%s@%s", username, hostname);
-    
     struct passwd *pwuid = getpwuid(getuid());
     pw_dir = pwuid->pw_dir;
     set_prompt_cwd();
@@ -119,7 +118,7 @@ int readline_init(void)
 int key_up(int count, int key)
 {
     /* Modify the command entry text: */
-    rl_replace_line("User pressed 'up' key", 1);
+    rl_replace_line(hist_search_cnum(hist_last_cnum() - count), 1);
 
     /* Move the cursor to the end of the line: */
     rl_point = rl_end;
