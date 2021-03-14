@@ -1,15 +1,25 @@
+/**@file
+ *
+ */
 #include <stdio.h>
 #include <readline/readline.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "dirent.h"
 #include "pwd.h"
 #include "history.h"
 #include "util.h"
 #include "logger.h"
 #include "ui.h"
 
+struct tab_completion {
+    char **env_dirs;
+    size_t size;
+    int index;
+    int builtins;
+};
 static int readline_init(void);
 static char prompt_str[4096] = { 0 };
 static char *username = NULL;
@@ -22,6 +32,16 @@ static char *line = NULL;
 static size_t line_sz = 0;
 static char emoji[5];
 static unsigned int c_num;
+DIR *directory;
+static struct tab_completion *tab_dirs;
+
+
+
+
+
+
+
+
 
 void init_ui(void)
 {
@@ -148,7 +168,15 @@ char **command_completion(const char *text, int start, int end)
 
     return rl_completion_matches(text, command_generator);
 }
+void clean_tabs(){
 
+    for(int i = 0; i < tab_dirs->index; i++){
+        free(tab_dirs->env_dirs[i]);
+    }
+    free(tab_dirs->env_dirs);
+    free(tab_dirs);
+
+}
 /**
  * This function is called repeatedly by the readline library to build a list of
  * possible completions. It returns one match per function call. Once there are
@@ -161,7 +189,83 @@ char *command_generator(const char *text, int state)
     // this function is called. You will likely need to maintain static/global
     // variables to track where you are in the search so that you don't start
     // over from the beginning.
+  
 
-    return NULL;
+    char builtins[4][16] = {"cd", "history", "exit", "jobs"};
+    if(state == 0){
+        LOG("INPUT STRING: %s\n", text);
+        tab_dirs = calloc(1, sizeof(struct tab_completion)); 
+        if(!tab_dirs){
+            perror("calloc");
+            exit(EXIT_FAILURE);
+        }
+        tab_dirs->builtins = 0;
+        tab_dirs->index = 0;
+        tab_dirs->size = 0;
+        char *env_path = NULL;
+        env_path = getenv("PATH");
+        
+        
+        size_t paths_sz = 4;
+        tab_dirs->env_dirs = malloc(paths_sz * sizeof(char*));
+        if(*env_path != '\0'){
+            LOGP("INLOOP\n");
+            char *next_tok = env_path;
+            char *curr_tok;
+            while((curr_tok = next_token(&next_tok, ":")) != NULL){
+                if(paths_sz == tab_dirs->size){
+                    paths_sz *= 2;
+                    tab_dirs->env_dirs = realloc(tab_dirs->env_dirs, paths_sz * sizeof(char*));
+                }
+                tab_dirs->env_dirs[tab_dirs->size] = strdup(curr_tok);
+                tab_dirs->size += 1;
+            }
+
+            while(tab_dirs->index < tab_dirs->size){
+                if((directory = opendir(tab_dirs->env_dirs[tab_dirs->index])) != NULL){
+                    break;
+                } else {
+                    tab_dirs->index += 1;
+                }
+            }
+        }
+    }
+
+    while(tab_dirs->index < tab_dirs->size){
+        struct dirent *entry;
+        while((entry = readdir(directory)) != NULL){
+            char *search;
+            if((search = strstr(entry->d_name, text)) != NULL){
+                if(search == entry->d_name)
+                    return strdup(entry->d_name);
+            }
+        }
+        tab_dirs->index += 1;
+        while(tab_dirs->index < tab_dirs->size){
+            if((directory = opendir(tab_dirs->env_dirs[tab_dirs->index])) != NULL){
+                break;
+            } else {
+                tab_dirs->index += 1;
+            }
+        }
+    }
+
+    while(tab_dirs->builtins < 4){
     
+        int i = tab_dirs->builtins;
+        tab_dirs->builtins += 1;
+        LOG("builtinS INDEX: %d\n", tab_dirs->builtins);
+        if(*text == '\0')
+            return strdup(builtins[i]);
+
+        char *search;
+        if((search = strstr(builtins[i], text)) != NULL){
+            if(search == builtins[i]) 
+                return strdup(builtins[i]);
+        }
+    }
+
+
+    clean_tabs();
+    return NULL;
 }
