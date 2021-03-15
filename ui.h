@@ -19,6 +19,6 @@ char *read_command(void);
 void set_prompt_cwd();
 void set_prompt_stat(int, unsigned int);
 void sigint(int);
-void clear_sz();
+void clean_ui();
 
 #endif
