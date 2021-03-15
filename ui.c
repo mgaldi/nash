@@ -41,6 +41,8 @@ static char *line = NULL;
 static size_t line_sz = 0;
 static char emoji[5];
 static unsigned int c_num;
+static int key_search = 0;
+static char *key_buffer = NULL;
 static DIR *directory;
 static struct tab_completion *tab_dirs;
 
@@ -134,6 +136,7 @@ void set_prompt_stat(int status, unsigned int cnum){
             strcpy(emoji, "\xF0\x9F\x93\x88");
 
         c_num = cnum;
+        key_search = cnum;
 
     }
 }
@@ -155,6 +158,9 @@ char *read_command(void)
         return line;
     } else {
 
+        if(key_buffer)
+            free(key_buffer);
+        key_buffer = NULL;
         return readline(prompt_line());
     }
 }
@@ -179,30 +185,74 @@ int readline_init(void)
  */
 int key_up(int count, int key)
 {
-    /* Modify the command entry text: */
-    rl_replace_line("User pressed 'up' key", 1);
+
+    if(key_buffer == NULL){
+        LOG("LINEBUF: %s\n", rl_line_buffer);
+        if(*rl_line_buffer == '\0'){
+            key_buffer = "";
+        } else {
+            key_buffer = strdup(rl_line_buffer);
+            if(!key_buffer){
+                perror("strdup");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    key_search--;
+    if(key_search <= 0)
+        key_search = 1;
+
+    const char *search;
+    if((search = hist_search_cnum(key_search)) == NULL){
+        return 0;
+    }
+
+    rl_replace_line(search, 1);
+
 
     /* Move the cursor to the end of the line: */
     rl_point = rl_end;
 
-    // TODO: reverse history search
 
     return 0;
 }
 
 /** This function replaces the line with the commands executed in the history
  *  going forward.
- *  
+ *
  */
 int key_down(int count, int key)
 {
-    /* Modify the command entry text: */
-    rl_replace_line("User pressed 'down' key", 1);
+    if(key_buffer == NULL){
+        if(*rl_line_buffer == '\0'){
+            key_buffer = "";
+        } else {
+            key_buffer = strdup(rl_line_buffer);
+            if(!key_buffer){
+                perror("strdup");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    key_search++;
+    if(key_search >= c_num){
+        key_search = c_num;
+
+        rl_replace_line(key_buffer, 1);
+        rl_point = rl_end;
+        return 0;
+    }
+    const char *search;
+    if((search = hist_search_cnum(key_search)) == NULL){
+        return 0;
+    }
+    rl_replace_line(search, 1);
 
     /* Move the cursor to the end of the line: */
     rl_point = rl_end;
 
-    // TODO: forward history search
 
     return 0;
 }
