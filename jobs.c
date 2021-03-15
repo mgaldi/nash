@@ -34,11 +34,6 @@ struct node {
 
 };
 
-
-
-
-
-
 static struct jobs_list *jobs = NULL;
 static struct node *head = NULL;
 
@@ -100,11 +95,6 @@ void jobs_destroy(){
  */
 void jobs_add(char *command, int pid){
 
-    if(jobs->total == jobs->limit){
-        printf("Limit number of jobs reached. Wait for a job to finish or \
-                terminate it.\n");
-        return;
-    }
     struct node *new_node = malloc(1 * sizeof(struct node));
     if(!new_node){
         perror("malloc");
@@ -168,5 +158,19 @@ void jobs_print(){
         printf("%s\n", curr_node->bg_job);
         curr_node = curr_node->next;
     }
+
+}
+
+/** This function checks wether or not the job limit has been reached.
+ *  
+ *  Returns: 0 if the limit has not been reached. -1 if limit has been reached.
+ *
+ */
+int jobs_check(){
+
+    if(jobs->total == 10)
+        return -1;
+
+    return 0;
 
 }

@@ -402,6 +402,16 @@ int handle_utils(char *const args[], int pipe, int tokens){
     p->tokens = *command_array;
     p->stdout_pipe = false;
 
+    if(job == 0 && jobs_check() == -1){
+
+        printf("Limit number of jobs reached. Wait for a job to finish or \
+                terminate it.\n");
+
+        destroy_commands(cmds, pipe);
+        free(commands);
+        return -1;
+    }
+
     child = fork();
     if(child == 0){
 

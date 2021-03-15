@@ -9,4 +9,5 @@ void jobs_destroy(void);
 void jobs_add(char *, int);
 void jobs_delete(int);
 void jobs_print(void);
+int jobs_check();
 #endif
