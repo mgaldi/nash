@@ -152,7 +152,6 @@ int handle_builtins(char *command, char **args){
 
     if(!strcmp(args[0], "jobs")){
         jobs_print();
-        fflush(stdout);
         return 0;
     }
     if(!strcmp(args[0], "cd")){
@@ -431,7 +430,6 @@ int handle_utils(char *const args[], int pipe, int tokens){
             running = 0;
             running = waitpid(child, &proc_status, 0);
             running = -1;
-            fflush(stdout);
         }
     }
 
