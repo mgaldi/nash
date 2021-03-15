@@ -143,8 +143,7 @@ void set_prompt_stat(int status, unsigned int cnum){
         else
             strcpy(emoji, "\xF0\x9F\x93\x88");
 
-        c_num = cnum;
-        key_search = cnum;
+        key_search = c_num = cnum;
 
     }
 }
@@ -202,9 +201,6 @@ int key_up(int count, int key)
             key_buffer = strdup(rl_line_buffer);
         }
     }
-    //if(key_buffer == NULL){
-    //    key_buffer = strdup(rl_line_buffer);
-    //}
 
     key_search--;
     if(key_search <= 0)
@@ -231,9 +227,6 @@ int key_up(int count, int key)
  */
 int key_down(int count, int key)
 {
-    //if(key_buffer == NULL){
-    //    key_buffer = strdup(rl_line_buffer);
-    //}
 
     if(c_num == key_search){
         if(key_buffer){

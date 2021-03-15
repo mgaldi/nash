@@ -138,9 +138,6 @@ void pipeline_r(struct command_line *cmds)
 }
 
 
-
-
-
 /** This function is used for handling the builtins. The command entered as
  *  input and the same command tokenized are passed as arguments.
  *  - command: command entered.
@@ -334,7 +331,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
 
         if(p->total_tokens == command_sz){
 
-            command_sz *=2;
+            command_sz *= 2;
 
             *command_array = realloc(*command_array, command_sz * sizeof(char*));
             p_command = (*command_array + p->total_tokens);
@@ -343,10 +340,12 @@ int handle_utils(char *const args[], int pipe, int tokens){
                 return EXIT_FAILURE;
             }
         }
+
         if(*args[i] == '&'){
             job = 0;
             continue;
         }
+
         if(*args[i] == '<'){
             p->stdin_file = strdup(args[++i]);
             if(!p->stdin_file){
@@ -355,6 +354,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
             }
             continue;
         }
+
         if(!strcmp(args[i], ">>")){
 
             p->append = 0;
@@ -365,6 +365,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
             }
             continue;
         }
+
         if(*args[i] == '>'){
             p->stdout_file = strdup(args[++i]);
             if(!p->stdout_file){
@@ -373,6 +374,7 @@ int handle_utils(char *const args[], int pipe, int tokens){
             }
             continue;
         }
+
         if(*args[i] == '|'){
 
             *p_command = (char*) NULL;
