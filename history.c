@@ -75,6 +75,11 @@ void hist_add(const char *cmd)
        free(c_history->commands[c_history->total % c_history->limit]);  
     }
     c_history->commands[c_history->total % c_history->limit] = strdup(cmd);
+    if(!c_history->commands[c_history->total % c_history->limit]){
+    
+        perror("strdup");
+        return;
+    }
     c_history->total += 1;
 
 

@@ -194,7 +194,7 @@ int key_up(int count, int key)
             key_buffer = strdup(rl_line_buffer);
             if(!key_buffer){
                 perror("strdup");
-                exit(EXIT_FAILURE);
+                key_buffer = "";
             }
         }
     }
@@ -231,7 +231,7 @@ int key_down(int count, int key)
             key_buffer = strdup(rl_line_buffer);
             if(!key_buffer){
                 perror("strdup");
-                exit(EXIT_FAILURE);
+                key_buffer = "";
             }
         }
     }
@@ -304,7 +304,7 @@ char *command_generator(const char *text, int state)
         tab_dirs = calloc(1, sizeof(struct tab_completion)); 
         if(!tab_dirs){
             perror("calloc");
-            exit(EXIT_FAILURE);
+            return NULL;
         }
         tab_dirs->builtins = 0;
         tab_dirs->index = 0;
@@ -312,6 +312,10 @@ char *command_generator(const char *text, int state)
 
         char *env_path = NULL;
         env_path = strdup(getenv("PATH"));
+        if(!env_path){
+            perror("strdup");
+            return NULL;
+        }
 
         size_t paths_sz = 4;
         tab_dirs->env_dirs = malloc(paths_sz * sizeof(char*));
@@ -327,6 +331,10 @@ char *command_generator(const char *text, int state)
                 }
 
                 tab_dirs->env_dirs[tab_dirs->size] = strdup(curr_tok);
+                if(!tab_dirs->env_dirs[tab_dirs->size]){
+                    perror("strdup");
+                    return NULL;
+                }
                 tab_dirs->size += 1;
             }
 

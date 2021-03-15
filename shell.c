@@ -349,16 +349,28 @@ int handle_utils(char *const args[], int pipe, int tokens){
         }
         if(*args[i] == '<'){
             p->stdin_file = strdup(args[++i]);
+            if(!p->stdin_file){
+                perror("strdup");
+                return -1;
+            }
             continue;
         }
         if(!strcmp(args[i], ">>")){
 
             p->append = 0;
             p->stdout_file = strdup(args[++i]);
+            if(!p->stdout_file){
+                perror("strdup");
+                return -1;
+            }
             continue;
         }
         if(*args[i] == '>'){
             p->stdout_file = strdup(args[++i]);
+            if(!p->stdout_file){
+                perror("strdup");
+                return -1;
+            }
             continue;
         }
         if(*args[i] == '|'){
@@ -376,6 +388,10 @@ int handle_utils(char *const args[], int pipe, int tokens){
         } else {
 
             *p_command = strdup(args[i]);
+            if(!(*p_command)){
+                perror("strdup");
+                return -1;
+            }
             p_command++;                //advancing one element in array
             p->total_tokens += 1;
         }
@@ -484,6 +500,11 @@ int main(void)
         hist_add(command);
 
         char *command_copy = strdup(command);
+        if(!command_copy){
+            cleanup();
+            continue;
+        }
+
         int status;
         int pipe = 0;
         int tokens = 0;
