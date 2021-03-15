@@ -404,8 +404,8 @@ int handle_utils(char *const args[], int pipe, int tokens){
 
     if(job == 0 && jobs_check() == -1){
 
-        printf("Limit number of jobs reached. Wait for a job to finish or \
-                terminate it.\n");
+        printf("Limit number of jobs reached. Wait for a job to finish, or \
+    terminate it.\n");
 
         destroy_commands(cmds, pipe);
         free(commands);
@@ -418,10 +418,10 @@ int handle_utils(char *const args[], int pipe, int tokens){
         /* This commentend function puts the child process in another group
          * process in case of background execution. In this way, signals meant
          * to be directed to the foreground won't interfere with background
-         * processes. As the test case sends a SIGINT all the processes of the
-         * first group process, the child processes won't be interrupted and
-         * will keep running. That's why the following lines are commended. 
-         */ 
+         * processes. As the test case sends a SIGINT to all the processes of
+         * the first group process, the child processes won't be interrupted and
+         * will keep running. That's why the following lines are commended.
+         */
 
         //if(job == 0)
         //    setpgid(child, child);
