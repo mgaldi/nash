@@ -1,5 +1,5 @@
 # Output binary name
-bin=crash
+bin=nash
 
 # Set the following to '0' to disable log messages:
 LOGGER ?= 1
