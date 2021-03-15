@@ -64,6 +64,10 @@ void init_ui(void)
         scripting = true;
     }else{
         username = getlogin();
+        if(!username){
+            perror("getlogin");
+            exit(EXIT_FAILURE);
+        }
         if(gethostname(hostname, 64) == -1){
             perror("gethostname");
             exit(EXIT_FAILURE);
@@ -92,7 +96,7 @@ void destroy_ui(){
 void clear_sz(){
 
     line_sz = 0;
-    if(key_buffer)
+    if(key_buffer != NULL)
         free(key_buffer);
 
     key_buffer = NULL;
@@ -188,15 +192,7 @@ int key_up(int count, int key)
 {
 
     if(key_buffer == NULL){
-        if(*rl_line_buffer == '\0'){
-            key_buffer = "";
-        } else {
-            key_buffer = strdup(rl_line_buffer);
-            if(!key_buffer){
-                perror("strdup");
-                key_buffer = "";
-            }
-        }
+        key_buffer = strdup(rl_line_buffer);
     }
 
     key_search--;
@@ -225,22 +221,18 @@ int key_up(int count, int key)
 int key_down(int count, int key)
 {
     if(key_buffer == NULL){
-        if(*rl_line_buffer == '\0'){
-            key_buffer = "";
-        } else {
-            key_buffer = strdup(rl_line_buffer);
-            if(!key_buffer){
-                perror("strdup");
-                key_buffer = "";
-            }
-        }
+        key_buffer = strdup(rl_line_buffer);
     }
 
     key_search++;
     if(key_search >= c_num){
         key_search = c_num;
 
-        rl_replace_line(key_buffer, 1);
+        if(key_buffer == NULL)
+            rl_replace_line("", 1);
+        else
+            rl_replace_line(key_buffer, 1);
+
         rl_point = rl_end;
         return 0;
     }
