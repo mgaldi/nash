@@ -186,7 +186,7 @@ int handle_builtins(char *command, char **args){
          free(command);
          jobs_destroy();
          hist_destroy();
-         clear_sz();
+         clean_ui();
          exit(0);
      }
      if(!strcmp(args[0], "history")){
@@ -203,7 +203,7 @@ int handle_builtins(char *command, char **args){
 void cleanup(){
 
     free(command);
-    clear_sz();
+    clean_ui();
 }
 
 /** This function is used to handle the commands starting with !. Based on the
