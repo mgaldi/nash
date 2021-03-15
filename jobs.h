@@ -1,3 +1,6 @@
+/**@file
+ *  Header file which contains the functions for handling the background jobs.
+ */
 #ifndef _JOBS_H_
 #define _JOBS_H_
 

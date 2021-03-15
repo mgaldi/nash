@@ -1,11 +1,6 @@
-/**
- * Demonstrates string tokenization in C using the strspn(3) and strcspn(3)
- * functions. Unlike strtok(3), this implementation is thread safe. The code
- * is based on the following newsgroup post:
+/**@file
  *
- * https://groups.google.com/forum/message/raw?msg=comp.lang.c/ff0xFqRPH_Y/Cen0mgciXn8J
  */
-
 #include <string.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -14,6 +9,21 @@
 
 #include "util.h"
 
+
+/**
+ * Retrieves the next token from a string.
+ *
+ * Parameters:
+ * - str_ptr: maintains context in the string, i.e., where the next token in the
+ *   string will be. If the function returns token N, then str_ptr will be
+ *   updated to point to token N+1. To initialize, declare a char * that points
+ *   to the string being tokenized. The pointer will be updated after each
+ *   successive call to next_token.
+ *
+ * - delim: the set of characters to use as delimiters
+ *
+ * Returns: char pointer to the next token in the string.
+ */
 char *next_token(char **str_ptr, const char *delim)
 {
     if (*str_ptr == NULL) {
@@ -52,14 +62,24 @@ char *next_token(char **str_ptr, const char *delim)
     return current_ptr;
 }
 
+/** This function returns the home directory of the current user.
+ *
+ */
 char *getpwd(){
-    
+
     struct passwd *pwuid = getpwuid(getuid());
     return pwuid->pw_dir;
 
 }
-int isDigitOnly(char *hist_search){
-    char *c = hist_search;
+
+/** This function checks if a given string contains only digits.
+ *
+ * -hist_search: string to check.
+ *  -Returns: 0 if succeded. -1 if it failed.
+ *
+ */
+int isDigitOnly(char *text){
+    char *c = text;
 
     while(*c != '\0'){
         if(*c < '0' || *c > '9')
