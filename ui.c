@@ -92,6 +92,10 @@ void destroy_ui(){
 void clear_sz(){
 
     line_sz = 0;
+    if(key_buffer)
+        free(key_buffer);
+
+    key_buffer = NULL;
 }
 
 /** This function creates the prompt.
@@ -130,7 +134,7 @@ void set_prompt_cwd(){
 void set_prompt_stat(int status, unsigned int cnum){
 
     if(!scripting){
-        if(status !=0 )
+        if(status != 0 )
             strcpy(emoji, "\xF0\x9F\x93\x89");
         else
             strcpy(emoji, "\xF0\x9F\x93\x88");
@@ -158,9 +162,6 @@ char *read_command(void)
         return line;
     } else {
 
-        if(key_buffer)
-            free(key_buffer);
-        key_buffer = NULL;
         return readline(prompt_line());
     }
 }
@@ -187,7 +188,6 @@ int key_up(int count, int key)
 {
 
     if(key_buffer == NULL){
-        LOG("LINEBUF: %s\n", rl_line_buffer);
         if(*rl_line_buffer == '\0'){
             key_buffer = "";
         } else {

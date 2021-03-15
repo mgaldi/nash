@@ -480,11 +480,10 @@ int main(void)
     while (true) {
         command = read_command();
         if (command == NULL) {
-            LOGP("HEY!\n");
             break;
         }
         char *args[4096];
-        //LOG("Input command: %s\n", command);
+        LOG("Input command: %s\n", command);
         char *p_comment = strstr(command, "#");
         if(p_comment){
             *p_comment = '\0';
