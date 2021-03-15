@@ -90,10 +90,10 @@ void destroy_ui(){
     free(line);
 }
 
-/** This function resets the parameter for lineread to 0.
- *
+/** This function resets the parameter for lineread to 0 and frees the memory
+ *  allocated in case the user searched with the up/down keys
  */
-void clear_sz(){
+void clean_ui(){
 
     line_sz = 0;
     if(key_buffer != NULL)
@@ -191,9 +191,20 @@ int readline_init(void)
 int key_up(int count, int key)
 {
 
-    if(key_buffer == NULL){
-        key_buffer = strdup(rl_line_buffer);
+    if(c_num == key_search){
+        if(key_buffer){
+            if(strcmp(key_buffer, rl_line_buffer)){
+                free(key_buffer);
+                key_buffer = strdup(rl_line_buffer);
+            }
+
+        } else {
+            key_buffer = strdup(rl_line_buffer);
+        }
     }
+    //if(key_buffer == NULL){
+    //    key_buffer = strdup(rl_line_buffer);
+    //}
 
     key_search--;
     if(key_search <= 0)
@@ -220,10 +231,21 @@ int key_up(int count, int key)
  */
 int key_down(int count, int key)
 {
-    if(key_buffer == NULL){
-        key_buffer = strdup(rl_line_buffer);
-    }
+    //if(key_buffer == NULL){
+    //    key_buffer = strdup(rl_line_buffer);
+    //}
 
+    if(c_num == key_search){
+        if(key_buffer){
+            if(strcmp(key_buffer, rl_line_buffer)){
+                free(key_buffer);
+                key_buffer = strdup(rl_line_buffer);
+            }
+
+        } else {
+            key_buffer = strdup(rl_line_buffer);
+        }
+    }
     key_search++;
     if(key_search >= c_num){
         key_search = c_num;
