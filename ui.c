@@ -130,8 +130,11 @@ void set_prompt_cwd(){
 
     if(!scripting){
         char temp_cwd[2048];
-        getcwd(temp_cwd, 2048);
-
+        char *check = getcwd(temp_cwd, 2048);
+	if(!check){
+		perror("getcwd");
+		exit(EXIT_FAILURE);
+	}
         if((strstr(temp_cwd, pw_dir)) == temp_cwd)
             sprintf(cwd, "~%s", temp_cwd + strlen(pw_dir));
         else
